@@ -10,6 +10,7 @@
 //   node erp-batch.mjs orders.json --dry       只填不保存（测速）
 //   node erp-batch.mjs orders.json --limit=2   只跑前 2 单
 import { connect, close, exportState, BASE } from './lib/browser.mjs'
+import { preflight, checkLogin } from './lib/preflight.mjs'
 import fs from 'node:fs'
 
 const file = process.argv[2]
@@ -18,12 +19,39 @@ if (!file) {
   process.exit(1)
 }
 const orders = JSON.parse(fs.readFileSync(file, 'utf8'))
+
+let bad = 0
+for (const [i, o] of orders.entries()) {
+  if (!o.contact && o.user) o.contact = o.user // 兼容旧写法
+  const miss = []
+  if (!o.subject) miss.push('subject')
+  if (!o.contact) miss.push('contact')
+  if (!o.system) miss.push('system')
+  if (!o.category) miss.push('category')
+  if (!o.systemType) miss.push('systemType')
+  if (!o.channel) miss.push('channel')
+  if (!Array.isArray(o.tagPath) || o.tagPath.length !== 6) miss.push('tagPath(必须6级)')
+  if (!o.image) miss.push('image')
+  if (miss.length) {
+    console.log(`[warn] 第 ${i + 1} 单缺字段: ${miss.join(', ')} | ${o.subject || '(无标题)'}`)
+    bad++
+  }
+}
+if (bad) console.log(`[warn] 共 ${bad} 单字段不全，继续跑但可能保存失败`)
 const DRY = process.argv.includes('--dry')
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '--limit=0').split('=')[1]) || orders.length
 
 const W = { system: 6, tag: 7, category: 8, sysType: 9, channel: 10, duration: 11, contact: 12 }
 const OPT = 'li.com-items-list-li'
 const TREE = 'li.com-tree-flat-li'
+
+// 开跑前自检：CDP 挂了自动重启整栈，登录失效直接提示
+await preflight()
+const loginOk = await checkLogin()
+if (loginOk === false) {
+  console.log('[x] 登录态失效，请先跑 node login.mjs')
+  process.exit(1)
+}
 
 const ctx = await connect()
 
@@ -237,15 +265,30 @@ async function fillContact(value) {
   // 普通单是「用户」：异步搜索，键盘选中
   await openField(W.contact)
   await inp.fill(String(value))
-  await page.waitForTimeout(2600)
-  const has = await page.evaluate(() =>
-    [...document.querySelectorAll('li.com-realtime-async-request-li')].some((e) => e.offsetParent !== null)
-  )
+  // 轮询候选，通常 600ms 内就出来，比死等 2.6s 快
+  let has = false
+  const t0 = Date.now()
+  while (Date.now() - t0 < 3500) {
+    has = await page.evaluate(() =>
+      [...document.querySelectorAll('li.com-realtime-async-request-li')].some((e) => e.offsetParent !== null)
+    )
+    if (has) break
+    await page.waitForTimeout(120)
+  }
   if (!has) return false
   await page.keyboard.press('ArrowDown')
-  await page.waitForTimeout(200)
+  await page.waitForTimeout(150)
   await page.keyboard.press('Enter')
-  await page.waitForTimeout(1400)
+  // 等回填
+  const t1 = Date.now()
+  while (Date.now() - t1 < 2000) {
+    const v = await page.evaluate(
+      (i) => (document.querySelectorAll('.label-wrapper')[i]?.innerText || '').trim(),
+      W.contact
+    )
+    if (/[一-龥]/.test(v)) break
+    await page.waitForTimeout(120)
+  }
   const back = await page.evaluate(
     (i) => (document.querySelectorAll('.label-wrapper')[i]?.innerText || '').replace(/\s+/g, ' ').trim(),
     W.contact
@@ -266,6 +309,28 @@ async function gotoAdd() {
     }
   }
   throw last
+}
+
+/** 从列表页直接进新增页（SPA 跳转，比整页 reload 快 2 秒多） */
+async function openAdd() {
+  if (page.url().includes('/workOrder/list')) {
+    const clicked = await page.evaluate(() => {
+      const b = [...document.querySelectorAll('button,.com-button-layout')].find(
+        (x) => (x.innerText || '').trim() === '新建工单'
+      )
+      if (!b) return false
+      b.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+      return true
+    })
+    if (clicked) {
+      try {
+        await page.waitForSelector('.label-wrapper', { timeout: 12000 })
+        return true
+      } catch {}
+    }
+  }
+  await gotoAdd()
+  return true
 }
 
 async function resetForm() {
