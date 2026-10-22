@@ -1,0 +1,11 @@
+import { connect, close, BASE } from './lib/browser.mjs'
+const ctx = await connect()
+const page = await ctx.newPage()
+await page.goto(`${BASE}/workOrder/detail?workOrderId=263563`, { waitUntil:'domcontentloaded' })
+await page.waitForTimeout(7000)
+const imgs = await page.evaluate(()=>[...document.querySelectorAll('img')].map(i=>i.src).filter(s=>/static|image|upload|file/i.test(s)))
+console.log('页面图片数:', imgs.length)
+imgs.slice(0,6).forEach(s=>console.log('  ', s.slice(0,120)))
+console.log('正文:', (await page.evaluate(()=>document.body.innerText)).slice(0,260).replace(/\n/g,' | '))
+await page.screenshot({path:'printer-detail.png', fullPage:false})
+await close(ctx); process.exit(0)

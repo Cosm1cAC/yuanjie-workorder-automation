@@ -90,6 +90,9 @@ async function closePanels() {
 async function openField(idx) {
   await closePanels()
   const el = page.locator('.label-wrapper').nth(idx).locator('input.com-input-element').first()
+  // 字段可能在视口外，先滚进来再量坐标，否则点击落空
+  await el.scrollIntoViewIfNeeded().catch(() => {})
+  await page.waitForTimeout(80)
   const box = await el.boundingBox()
   if (!box) throw new Error(`字段 ${idx} 不可见`)
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
@@ -218,13 +221,36 @@ async function pickTag(chain) {
   return false
 }
 
-async function fillContact(phone) {
+async function fillContact(value) {
   const wrap = page.locator('.label-wrapper').nth(W.contact)
+  const labelName = await wrap.locator('.label-name').innerText().catch(() => '')
   const inp = wrap.locator('input.com-input-element').first()
   if (!(await inp.count())) return false
-  await inp.fill(String(phone))
-  await page.waitForTimeout(150)
-  return (await inp.inputValue()).replace(/\s/g, '') === String(phone)
+
+  // ERP 单是「联系方式」：直接填手机号
+  if (/联系方式/.test(labelName)) {
+    await inp.fill(String(value))
+    await page.waitForTimeout(150)
+    return (await inp.inputValue()).replace(/\s/g, '') === String(value)
+  }
+
+  // 普通单是「用户」：异步搜索，键盘选中
+  await openField(W.contact)
+  await inp.fill(String(value))
+  await page.waitForTimeout(2600)
+  const has = await page.evaluate(() =>
+    [...document.querySelectorAll('li.com-realtime-async-request-li')].some((e) => e.offsetParent !== null)
+  )
+  if (!has) return false
+  await page.keyboard.press('ArrowDown')
+  await page.waitForTimeout(200)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(1400)
+  const back = await page.evaluate(
+    (i) => (document.querySelectorAll('.label-wrapper')[i]?.innerText || '').replace(/\s+/g, ' ').trim(),
+    W.contact
+  )
+  return /[一-龥]/.test(back) && !back.includes('请选择')
 }
 
 /** 打开新增页，失败自动重试（未保存提示/导航被打断都会导致 ERR_ABORTED） */
@@ -263,6 +289,10 @@ async function fillOrder(o) {
     await page.waitForTimeout(500)
     console.log(`      · 图片 ${((Date.now()-_t)/1000).toFixed(1)}s`)
   }
+  if (o.solutionImage) {
+    await page.locator('input[type=file]').nth(1).setInputFiles(o.solutionImage)
+    await page.waitForTimeout(400)
+  }
   if (o.solution) await ta.nth(2).fill(o.solution)
 
   const T = async (label, fn) => { const t=Date.now(); const r=await fn(); console.log(`      · ${label} ${((Date.now()-t)/1000).toFixed(1)}s`); return r }
@@ -275,7 +305,26 @@ async function fillOrder(o) {
   if (o.duration != null) {
     await page.locator('.label-wrapper').nth(W.duration).locator('input.com-input-element').first().fill(String(o.duration))
   }
+  // 校验补填：重建可能把前面的字段清掉
+  const want = [
+    [W.system, o.system, '所属系统'],
+    [W.category, o.category, '问题分类'],
+    [W.sysType, o.systemType, '系统类型'],
+    [W.channel, o.channel, '反馈渠道'],
+  ]
+  for (let round = 0; round < 2; round++) {
+    for (const [idx, val, label] of want) {
+      if (!val) continue
+      const txt = await fieldText(idx)
+      if (!txt.includes(val)) {
+        console.log(`   [fix] ${label} 被清空，重填`)
+        await pick(idx, val, label)
+      }
+    }
+  }
+
   const okContact = o.contact ? await fillContact(o.contact) : true
+  if (o.contact) console.log('  用户/联系方式:', okContact ? 'ok' : 'FAIL')
 
   return okSystem && okTag && okCat && okType && okCh && okContact
 }
