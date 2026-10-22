@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 敏感：登录态 / 会话 / 本地服务配置
+.auth-state.json
+.target-session
+.chrome-profile/
+.chrome-profile2/
+.chrome-profile3/
+*.log
+service.json
+
+# 用户业务数据（含客户手机号），默认不入库
+图片/
+
+# 临时调试产物
+_debug/
+*.png
+!public/logo.png
+.browser-profile/
+lib/.browser-profile/
+**/.browser-profile*/
+**/.chrome-profile*/

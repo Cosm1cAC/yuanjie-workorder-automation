@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>圆捷工单 · 图片与指令</title>
+<link rel="icon" href="/logo.png" />
+<style>
+  :root{
+    --purple-900:#4a1069; --purple-800:#5b1380; --purple-700:#6a1b9a;
+    --purple-600:#7b1fa2; --purple-500:#8e24aa; --purple-100:#f3e9fa; --purple-50:#faf7fd;
+    --text:#2b2b33; --text-2:#6b6b7b; --text-3:#9a9aab; --line:#e8e8f0;
+    --bg:#f4f5f9; --white:#fff; --radius:10px;
+    --shadow:0 2px 10px rgba(74,16,105,.06), 0 1px 2px rgba(74,16,105,.05);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  button{font:inherit;}
+  textarea{font:inherit;}
+
+  .topbar{height:64px;display:flex;align-items:center;gap:14px;padding:0 24px;
+    background:linear-gradient(90deg,var(--purple-800) 0%,var(--purple-600) 55%,var(--purple-500) 100%);
+    color:#fff;box-shadow:0 2px 12px rgba(74,16,105,.22);position:sticky;top:0;z-index:20;}
+  .logo{width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,.12);padding:3px;flex:none;}
+  .brand{display:flex;align-items:baseline;gap:10px;min-width:0;}
+  .brand h1{font-size:18px;font-weight:600;margin:0;letter-spacing:.5px;white-space:nowrap;}
+  .brand .sub{font-size:12px;color:rgba(255,255,255,.62);white-space:nowrap;}
+  .topbar .spacer{flex:1;}
+  .stat{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.85);
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);
+    padding:6px 12px;border-radius:999px;}
+  .stat b{font-size:14px;color:#fff;font-weight:600;}
+
+  .wrap{max-width:1360px;margin:0 auto;padding:24px;display:grid;grid-template-columns:440px 1fr;gap:20px;align-items:start;}
+  @media (max-width:1020px){.wrap{grid-template-columns:1fr;}}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-hd{display:flex;align-items:center;gap:8px;padding:16px 18px 0;}
+  .card-hd .mark{width:3px;height:14px;border-radius:2px;background:var(--purple-600);flex:none;}
+  .card-hd h2{font-size:15px;font-weight:600;margin:0;}
+  .card-hd .hint{margin-left:auto;font-size:12px;color:var(--text-3);}
+
+  .compose{padding-bottom:18px;}
+  .drop{margin:16px 18px 0;border:1.5px dashed #d6c2e8;border-radius:var(--radius);
+    background:var(--purple-50);padding:26px 18px;text-align:center;cursor:pointer;
+    transition:border-color .18s,background .18s;}
+  .drop:hover{border-color:var(--purple-500);background:#f7f0fc;}
+  .drop.drag{border-color:var(--purple-600);background:var(--purple-100);}
+  .drop .cloud{width:46px;height:46px;margin:0 auto 8px;color:var(--purple-500);opacity:.9;}
+  .drop .t1{font-size:14px;font-weight:600;}
+  .drop .t2{font-size:12px;color:var(--text-3);margin-top:5px;}
+  .drop kbd{display:inline-block;padding:1px 6px;border:1px solid #d9cbe6;border-bottom-width:2px;
+    border-radius:4px;background:#fff;font:12px/1.5 ui-monospace,Consolas,monospace;color:var(--purple-700);}
+
+  .pick-row{margin:12px 18px 0;display:flex;gap:10px;}
+  .pick-row .btn-ghost{flex:1;height:36px;}
+  .paste-state{margin:8px 18px 0;font-size:11px;color:var(--text-3);min-height:16px;}
+
+  .staged{margin:12px 18px 0;display:none;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px;}
+  .staged.show{display:grid;}
+  .stage{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;aspect-ratio:1;background:#faf9fc;}
+  .stage img{width:100%;height:100%;object-fit:cover;display:block;}
+  .stage .rm{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:0;
+    background:rgba(43,43,51,.62);color:#fff;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}
+  .stage:hover .rm{opacity:1;}
+
+  .meta-form{margin:14px 18px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
+  .meta-form .full{grid-column:1 / -1;}
+  .meta-form label{display:block;font-size:12px;color:var(--text-2);margin-bottom:5px;}
+  .meta-form .req{color:#d32f2f;}
+  .meta-form select,.meta-form input{width:100%;height:34px;padding:0 10px;border:1px solid var(--line);
+    border-radius:8px;outline:none;background:#fff;color:var(--text);font:inherit;transition:border-color .15s,box-shadow .15s;}
+  .meta-form select:focus,.meta-form input:focus{border-color:var(--purple-500);box-shadow:0 0 0 3px rgba(142,36,170,.10);}
+  .meta-form select.invalid{border-color:#d32f2f;box-shadow:0 0 0 3px rgba(211,47,47,.10);}
+  .preview-line{font-size:12px;color:var(--text-3);background:var(--purple-50);border:1px dashed #e2d3f0;
+    border-radius:8px;padding:7px 10px;margin-top:2px;}
+  .preview-line b{color:var(--purple-700);font-weight:600;}
+
+  .field{margin:14px 18px 0;}
+  .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:6px;}
+  .field label .req{color:#d32f2f;}
+  #note{width:100%;min-height:92px;resize:vertical;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;outline:none;background:#fff;color:var(--text);line-height:1.7;transition:border-color .15s,box-shadow .15s;}
+  #note:focus{border-color:var(--purple-500);box-shadow:0 0 0 3px rgba(142,36,170,.10);}
+  #note::placeholder{color:#b5b5c4;}
+
+  .actions{margin:14px 18px 0;display:flex;gap:10px;}
+  .btn-main{flex:1;height:40px;border:1px solid var(--purple-600);background:var(--purple-600);color:#fff;
+    border-radius:8px;cursor:pointer;font-weight:600;transition:background .15s,box-shadow .15s;}
+  .btn-main:hover{background:var(--purple-700);box-shadow:0 4px 14px rgba(123,31,162,.28);}
+  .btn-main:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;}
+  .btn-ghost{height:40px;padding:0 16px;border:1px solid var(--line);background:#fff;border-radius:8px;
+    cursor:pointer;color:var(--text-2);transition:all .15s;white-space:nowrap;}
+  .btn-ghost:hover{border-color:var(--purple-500);color:var(--purple-700);background:var(--purple-50);}
+  .btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
+
+  .sess{margin:12px 18px 0;font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:6px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:#9e9e9e;flex:none;}
+  .dot.on{background:#43a047;}
+  .sess code{background:#f5f2f9;border:1px solid #ece5f4;border-radius:4px;padding:0 4px;color:var(--purple-700);}
+  .sess select{margin-left:auto;max-width:190px;height:24px;font-size:11px;color:var(--text-2);
+    border:1px solid var(--line);border-radius:6px;padding:0 6px;background:#fff;cursor:pointer;}
+
+  .gallery{padding-bottom:18px;min-height:340px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;padding:16px 18px 0;}
+  .item{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;transition:box-shadow .18s,transform .18s;}
+  .item:hover{box-shadow:0 6px 18px rgba(74,16,105,.12);transform:translateY(-1px);}
+  .thumb{position:relative;display:block;width:100%;aspect-ratio:4/3;background:#faf9fc;cursor:zoom-in;}
+  .thumb img{width:100%;height:100%;object-fit:contain;display:block;}
+  .thumb .badge{position:absolute;right:6px;bottom:6px;background:rgba(43,43,51,.62);color:#fff;
+    font-size:11px;padding:1px 6px;border-radius:4px;}
+  .meta{padding:9px 10px 10px;}
+  .name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sub{font-size:11px;color:var(--text-3);margin-top:3px;}
+  .acts{display:flex;gap:6px;margin-top:9px;}
+  .btn{flex:1;min-width:0;height:28px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer;
+    font-size:12px;color:var(--text-2);display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    white-space:nowrap;overflow:hidden;transition:all .15s;}
+  .btn:hover{border-color:var(--purple-500);color:var(--purple-700);background:var(--purple-50);}
+  .btn.danger:hover{border-color:#e05a5a;color:#c62828;background:#fff5f5;}
+  .btn svg{width:13px;height:13px;}
+  .empty{padding:64px 20px;text-align:center;color:var(--text-3);font-size:13px;}
+  .empty svg{width:54px;height:54px;opacity:.35;margin-bottom:10px;color:var(--purple-500);}
+
+  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+    background:rgba(43,43,51,.92);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;
+    transition:opacity .2s,transform .2s;z-index:60;max-width:80vw;}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .toast.ok{background:rgba(46,125,50,.95);}
+  .toast.err{background:rgba(198,40,40,.95);}
+
+  .lightbox{position:fixed;inset:0;background:rgba(20,8,30,.78);display:none;align-items:center;justify-content:center;
+    z-index:80;padding:32px;backdrop-filter:blur(3px);}
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:92vw;max-height:86vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.45);background:#fff;}
+  .lb-close{position:absolute;top:20px;right:24px;width:38px;height:38px;border-radius:50%;border:0;
+    background:rgba(255,255,255,.14);color:#fff;font-size:22px;cursor:pointer;line-height:1;}
+  .lb-close:hover{background:rgba(255,255,255,.26);}
+  .lb-name{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.8);font-size:12px;}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="/logo.png" alt="圆捷" />
+    <div class="brand">
+      <h1>圆捷工单</h1>
+      <span class="sub">图片 + 指令 · 一键发给 AI</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="stat">已上传 <b id="count">0</b> 张</div>
+  </header>
+
+  <main class="wrap">
+    <section class="card compose">
+      <div class="card-hd"><i class="mark"></i><h2>新建任务</h2></div>
+
+      <div class="drop" id="drop">
+        <svg class="cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 18.5A3.5 3.5 0 0 1 6 11.6a5.2 5.2 0 0 1 10.1-1.5A3.9 3.9 0 0 1 18 18.5" />
+          <path d="M12 12.5v7" /><path d="m9 15.5 3-3 3 3" />
+        </svg>
+        <div class="t1">把图片拖到这里</div>
+        <div class="t2">或点下面的按钮选择 / 读取剪贴板</div>
+      </div>
+
+      <div class="pick-row">
+        <button class="btn-ghost" id="pick">选择图片</button>
+        <button class="btn-ghost" id="paste">粘贴图片</button>
+      </div>
+
+      <div class="paste-state" id="pasteState">支持 Ctrl+V 直接粘贴截图（页面任意位置都可以）</div>
+
+      <div class="staged" id="staged"></div>
+
+      <div class="meta-form">
+        <div>
+          <label>省区 <span class="req">*</span></label>
+          <select id="province">
+            <option value="">请选择省区</option>
+          </select>
+        </div>
+        <div>
+          <label>片区</label>
+          <input id="district" list="districtList" placeholder="可留空" autocomplete="off" />
+          <datalist id="districtList">
+            <option value="成西片区"></option>
+            <option value="成东片区"></option>
+            <option value="成都片区"></option>
+            <option value="川南片区"></option>
+            <option value="川北片区"></option>
+          </datalist>
+        </div>
+        <div>
+          <label>客户名</label>
+          <input id="customer" placeholder="可留空" autocomplete="off" />
+        </div>
+        <div>
+          <label>实施人</label>
+          <input id="owner" list="ownerList" value="四川省区黄俊淏" autocomplete="off" />
+          <datalist id="ownerList">
+            <option value="四川省区黄俊淏"></option>
+            <option value="黑龙江省区周文强"></option>
+            <option value="江苏省区王林林"></option>
+            <option value="江苏省区刘剑"></option>
+            <option value="山西省区李忠伦"></option>
+            <option value="重庆区李忠伦"></option>
+            <option value="山东省区刘剑"></option>
+            <option value="广东省区叶忠强"></option>
+            <option value="浙南省区李忠伦"></option>
+            <option value="河南省区李忠伦"></option>
+            <option value="天津区施雪梅"></option>
+            <option value="总部龙章银"></option>
+          </datalist>
+        </div>
+        <div class="full preview-line">标题客户名：<b id="namePreview">—</b></div>
+      </div>
+
+      <div class="field">
+        <label>工单说明 <span class="req">*</span></label>
+        <textarea id="note" placeholder="例如：这是 10-20 成西片区三家的实施，第一家平台模式，第二三家线下打单。客户名用成西片区+手机号，中间打码。"></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn-main" id="send">发送给 AI</button>
+        <button class="btn-ghost" id="copy">仅复制文字</button>
+      </div>
+
+      <div class="sess">
+        <span class="dot" id="dot"></span>
+        <span id="sessText">正在检测 OpenCode 会话…</span>
+        <select id="sessSel" title="切换目标会话"><option value="">切换会话…</option></select>
+      </div>
+      <input type="file" id="file" accept="image/*" multiple hidden />
+    </section>
+
+    <section class="card gallery">
+      <div class="card-hd">
+        <i class="mark"></i><h2>已上传</h2>
+        <span class="hint" id="dirhint">.\\图片</span>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" />
+        </svg>
+        <div>还没有图片，拖一张进来试试</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <div class="lightbox" id="lightbox">
+    <button class="lb-close" id="lbClose">×</button>
+    <img id="lbImg" alt="" />
+    <div class="lb-name" id="lbName"></div>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const grid = $('#grid'), empty = $('#empty'), countEl = $('#count'), toastEl = $('#toast')
+const stagedEl = $('#staged'), noteEl = $('#note'), sendBtn = $('#send'), copyBtn = $('#copy')
+
+let images = []
+let staged = []   // { file, url }
+
+function toast(msg, type = '') {
+  toastEl.textContent = msg
+  toastEl.className = 'toast show ' + type
+  clearTimeout(toast._t)
+  toast._t = setTimeout(() => (toastEl.className = 'toast ' + type), 2600)
+}
+
+const fmtSize = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB'
+function fmtTime(ms) { const d = new Date(ms), p = x => String(x).padStart(2,'0'); return `${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}` }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+
+const ICON_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>'
+
+function renderGallery() {
+  countEl.textContent = images.length
+  empty.style.display = images.length ? 'none' : 'block'
+  grid.innerHTML = images.map((img, i) => `
+    <div class="item">
+      <a class="thumb" data-i="${i}" title="点击预览">
+        <img src="${img.url}" alt="${esc(img.name)}" loading="lazy" />
+        <span class="badge">${fmtSize(img.size)}</span>
+      </a>
+      <div class="meta">
+        <div class="name" title="${esc(img.name)}">${esc(img.name)}</div>
+        <div class="sub">${fmtTime(img.mtime)}</div>
+        <div class="acts">
+          <button class="btn" data-copy="${i}">${ICON_COPY}复制路径</button>
+          <button class="btn danger" data-del="${i}">${ICON_DEL}删除</button>
+        </div>
+      </div>
+    </div>`).join('')
+}
+
+function renderStaged() {
+  stagedEl.classList.toggle('show', staged.length > 0)
+  stagedEl.innerHTML = staged.map((s, i) => `
+    <div class="stage">
+      <img src="${s.url}" alt="${esc(s.file.name)}" />
+      <button class="rm" data-rm="${i}" title="移除">×</button>
+    </div>`).join('')
+}
+
+/** 统一的接口调用：服务没起来时给出可操作的提示，而不是 fail to fetch */
+async function api(path, options) {
+  try {
+    const r = await fetch(path, options)
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
+    return j
+  } catch (e) {
+    if (e instanceof TypeError) {
+      showOffline()
+      throw new Error('服务未启动，请双击「启动图片上传.bat」')
+    }
+    throw e
+  }
+}
+
+function showOffline() {
+  const dot = $('#dot')
+  dot.classList.remove('on')
+  $('#sessText').innerHTML = '<b style="color:#c62828">服务未启动</b>　双击「启动图片上传.bat」即可恢复'
+  $('#dirhint').textContent = '服务未启动'
+}
+
+async function refresh() {
+  try {
+    const j = await api('/api/list')
+    images = j.images || []
+    if (j.dir) $('#dirhint').textContent = j.dir
+    renderGallery()
+  } catch (e) {
+    toast(e.message, 'err')
+  }
+}
+
+function addFiles(files) {
+  let n = 0
+  for (const f of files) {
+    if (!f || !String(f.type || '').startsWith('image/')) { if (f?.name) toast('跳过非图片：' + f.name, 'err'); continue }
+    staged.push({ file: f, url: URL.createObjectURL(f) })
+    n++
+  }
+  renderStaged()
+  if (n) $('#pasteState').textContent = `已加入 ${n} 张，共 ${staged.length} 张待发送`
+  return n
+}
+
+/** 从 clipboardData 里尽量把图片抠出来（items 和 files 都看） */
+function filesFromClipboard(dt) {
+  const out = []
+  if (!dt) return out
+  try {
+    for (const it of dt.items || []) {
+      if (it.kind === 'file' && String(it.type).startsWith('image/')) {
+        const f = it.getAsFile()
+        if (f) out.push(f)
+      }
+    }
+  } catch {}
+  try {
+    for (const f of dt.files || []) {
+      if (String(f.type || '').startsWith('image/')) out.push(f)
+    }
+  } catch {}
+  // 去重（items 和 files 可能是同一个文件）
+  const seen = new Set()
+  return out.filter((f) => {
+    const k = `${f.name}|${f.size}|${f.type}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
+/** 剪贴板 API：Ctrl+V 不生效时的兜底 */
+async function pasteFromClipboard() {
+  try {
+    if (!navigator.clipboard?.read) throw new Error('浏览器不支持读取剪贴板')
+    const items = await navigator.clipboard.read()
+    const files = []
+    for (const item of items) {
+      for (const type of item.types) {
+        if (!type.startsWith('image/')) continue
+        const blob = await item.getType(type)
+        const ext = type.split('/')[1] || 'png'
+        files.push(new File([blob], `clipboard-${Date.now()}.${ext}`, { type }))
+      }
+    }
+    if (!files.length) return toast('剪贴板里没有图片', 'err')
+    addFiles(files)
+  } catch (e) {
+    toast('读取剪贴板失败：' + e.message, 'err')
+    $('#pasteState').textContent = '如果 Ctrl+V 没反应：截图后先点一下页面空白处，再按 Ctrl+V；或允许本站读取剪贴板后点「粘贴图片」'
+  }
+}
+
+async function uploadOne(item) {
+  const name = item.file.name || `pasted-${Date.now()}.png`
+  const j = await api('/api/upload?name=' + encodeURIComponent(name), {
+    method: 'POST',
+    headers: { 'Content-Type': item.file.type || 'application/octet-stream' },
+    body: item.file,
+  })
+  if (!j.ok) throw new Error(j.error || '上传失败')
+  return j.image
+}
+
+/** 上传暂存图片，拼出给 AI 的完整文本 */
+async function buildMessage() {
+  if (!staged.length) throw new Error('还没有图片')
+  const note = noteEl.value.trim()
+  if (!note) throw new Error('还没写工单说明')
+  const province = $('#province')
+  if (!province.value.trim()) {
+    province.classList.add('invalid')
+    province.focus()
+    throw new Error('省区不能为空')
+  }
+  province.classList.remove('invalid')
+
+  sendBtn.disabled = copyBtn.disabled = true
+  sendBtn.textContent = '上传中…'
+  try {
+    const uploaded = []
+    for (const s of staged) uploaded.push(await uploadOne(s))
+    const list = uploaded.map(u => `- ${u.rel}`).join('\n')
+    const meta = [
+      `省区：${$('#province').value.trim()}`,
+      `片区：${$('#district').value.trim() || '(空)'}`,
+      `客户名：${$('#customer').value.trim() || '(空)'}`,
+      `标题客户名：${customerName()}`,
+      `实施人：${$('#owner').value.trim() || '(空)'}`,
+    ].join('\n')
+    const text = `【工单任务】\n图片：\n${list}\n\n${meta}\n\n说明：${note}`
+    return { text, uploaded }
+  } finally {
+    sendBtn.disabled = copyBtn.disabled = false
+    sendBtn.textContent = '发送给 AI'
+  }
+}
+
+/** 客户名规则：填了就用；没填有片区用片区+客户；都没有用省区+客户 */
+function customerName() {
+  const c = $('#customer').value.trim()
+  if (c) return c
+  const d = $('#district').value.trim()
+  if (d) return `${d}客户`
+  const p = $('#province').value.trim()
+  return p ? `${p}客户` : ''
+}
+
+function updatePreview() {
+  $('#namePreview').textContent = customerName() || '请先选择省区'
+  const p = $('#province')
+  if (p.value) p.classList.remove('invalid')
+}
+
+function clearStaged() {
+  staged.forEach(s => URL.revokeObjectURL(s.url))
+  staged = []
+  renderStaged()
+  noteEl.value = ''
+}
+
+sendBtn.onclick = async () => {
+  try {
+    const { text, uploaded } = await buildMessage()
+    sendBtn.disabled = true
+    sendBtn.textContent = '发送中…'
+    const j = await api('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!j.ok) throw new Error(j.error || '发送失败')
+    toast('已发送，AI 已开始处理', 'ok')
+    clearStaged()
+    await refresh()
+  } catch (e) {
+    toast(e.message, 'err')
+  } finally {
+    sendBtn.disabled = false
+    sendBtn.textContent = '发送给 AI'
+  }
+}
+
+copyBtn.onclick = async () => {
+  try {
+    const { text } = await buildMessage()
+    await navigator.clipboard.writeText(text)
+    toast('已复制，粘贴到 OpenCode 即可', 'ok')
+    await refresh()
+  } catch (e) { toast(e.message, 'err') }
+}
+
+// 选择 / 拖拽 / 粘贴
+// 只让按钮触发文件选择，避免点空白区域误弹文件框
+$('#pick').onclick = () => $('#file').click()
+$('#paste').onclick = pasteFromClipboard
+$('#file').onchange = (e) => { addFiles([...e.target.files]); e.target.value = '' }
+
+const drop = $('#drop')
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag') })
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'))
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag'); addFiles([...e.dataTransfer.files]) })
+
+// 粘贴：capture 到 document，页面任意位置生效
+document.addEventListener('paste', (e) => {
+  const files = filesFromClipboard(e.clipboardData)
+  if (files.length) {
+    e.preventDefault()
+    e.stopPropagation()
+    addFiles(files)
+  } else {
+    const t = e.clipboardData?.getData?.('text/plain')
+    if (!t) $('#pasteState').textContent = '这次粘贴里没有图片。请用截图工具「复制」，或点「粘贴图片」'
+  }
+}, true)
+
+stagedEl.addEventListener('click', e => {
+  const rm = e.target.closest('[data-rm]')
+  if (rm) { const i = +rm.dataset.rm; URL.revokeObjectURL(staged[i].url); staged.splice(i, 1); renderStaged() }
+})
+
+// 图库交互
+grid.addEventListener('click', async (e) => {
+  const copyBtn2 = e.target.closest('[data-copy]')
+  if (copyBtn2) {
+    const img = images[+copyBtn2.dataset.copy]
+    try { await navigator.clipboard.writeText(img.rel); toast('已复制：' + img.rel, 'ok') }
+    catch { toast('复制失败：' + img.rel, 'err') }
+    return
+  }
+  const delBtn = e.target.closest('[data-del]')
+  if (delBtn) {
+    const img = images[+delBtn.dataset.del]
+    if (!confirm(`删除 ${img.name}？`)) return
+    const r = await api('/api/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: img.name }) })
+    if (r.ok) { toast('已删除', 'ok'); refresh() } else toast('删除失败', 'err')
+    return
+  }
+  const thumb = e.target.closest('[data-i]')
+  if (thumb) {
+    const img = images[+thumb.dataset.i]
+    $('#lbImg').src = img.url
+    $('#lbName').textContent = img.rel
+    $('#lightbox').classList.add('show')
+  }
+})
+
+$('#lbClose').onclick = () => $('#lightbox').classList.remove('show')
+$('#lightbox').onclick = e => { if (e.target.id === 'lightbox') $('#lightbox').classList.remove('show') }
+window.addEventListener('keydown', e => { if (e.key === 'Escape') $('#lightbox').classList.remove('show') })
+
+// 省区选项（取自系统实际使用的值）
+const PROVINCES = [
+  '总部','上海区','北京区','天津区','重庆区',
+  '四川省区','云南省区','贵州省区','西藏区','陕西省区','甘肃省区','青海省区','宁夏区','新疆区',
+  '内蒙古省区','山西省区','河北省区','河南省区','山东省区','安徽省区','江苏省区','浙江省区',
+  '浙北省区','浙南省区','江西省区','福建省区','湖北省区','湖南省区','广东省区','粤东省区',
+  '广西省区','海南省区','辽宁省区','吉林省区','黑龙江省区',
+]
+const provinceSel = $('#province')
+for (const p of PROVINCES) {
+  const o = document.createElement('option')
+  o.value = p
+  o.textContent = p
+  provinceSel.appendChild(o)
+}
+provinceSel.addEventListener('change', updatePreview)
+$('#district').addEventListener('input', updatePreview)
+$('#customer').addEventListener('input', updatePreview)
+updatePreview()
+
+// 会话检测 + 切换
+async function loadSessions(current) {
+  try {
+    const j = await api('/api/sessions')
+    const sel = $('#sessSel')
+    sel.innerHTML = '<option value="">切换会话…</option>' +
+      (j.sessions || []).map((s) => {
+        const mark = s.id === current ? ' ★' : ''
+        return `<option value="${s.id}">${s.title.slice(0, 22)}${mark}</option>`
+      }).join('')
+    sel.value = current || ''
+  } catch {}
+}
+
+$('#sessSel').addEventListener('change', async (e) => {
+  const id = e.target.value
+  if (!id) return
+  try {
+    await api('/api/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session: id }),
+    })
+    toast('已切换目标会话', 'ok')
+    await refreshSession()
+  } catch (err) {
+    toast(err.message, 'err')
+  }
+})
+
+async function refreshSession() {
+  try {
+    const j = await api('/api/session')
+    if (j.ok) {
+      $('#dot').classList.add('on')
+      $('#sessText').innerHTML = `已连接 OpenCode 会话 <code>${j.session.slice(0, 12)}…</code>`
+      await loadSessions(j.session)
+    } else {
+      $('#sessText').textContent = '未检测到 OpenCode，发送会失败，可改用「仅复制文字」'
+    }
+  } catch {
+    $('#sessText').textContent = '未检测到 OpenCode，发送会失败，可改用「仅复制文字」'
+  }
+}
+refreshSession()
+
+refresh()
+</script>
+</body>
+</html>

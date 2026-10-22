@@ -1,0 +1,24 @@
+{
+  "mode": "平台模式",
+  "note": "同一客户的平台模式 ERP 对接固定拆 8 单：7 个固定项 + 1 个按客户情况选（审单策略 或 手工单创建）",
+  "titlePattern": "{客户名}erp对接-平台模式-{功能点}",
+  "fields": {
+    "belongSystem": "客户管家ERP",
+    "questionType": "咨询使用",
+    "systemType": "WEB端",
+    "feedbackChannel": "微信",
+    "labels": ["客户管家ERP", "电商用户", "系统对接", "系统对接", "ERP实施", "ERP实施"],
+    "duration": 10
+  },
+  "items": [
+    { "no": 1, "item": "店铺授权", "solution": "协助客户授权好抖音店铺", "duration": 10, "required": true },
+    { "no": 2, "item": "打印模版设置", "solution": "协助客户设置好打印模版", "duration": 10, "required": true },
+    { "no": 3, "item": "打单设置", "solution": "设置抖音拉单店铺和模版", "duration": 12, "required": true },
+    { "no": 4, "item": "平台商品整理", "solution": "平台商品简称、平台规格简称设置培训", "duration": 10, "required": true },
+    { "no": 5, "item": "订单打单筛选", "solution": "培训客户使用商品筛选，按相同规格商品打印", "duration": 10, "required": true },
+    { "no": 6, "item": "设置快递匹配策略", "solution": "设置默认发圆通快递", "duration": 10, "required": true },
+    { "no": 7, "item": "订单怎么补打", "solution": "打印记录-可以补打面单，或者在已发货界面补打快递单", "duration": 12, "required": true },
+    { "no": 8, "item": "设置审单策略", "solution": "全部订单设置自动审单", "duration": 15, "required": false, "when": "客户需要自动审单时" },
+    { "no": 9, "item": "手工单怎么创建", "solution": "订单-待审核-创建手工单，或者批量导入，批量导入的表格模版，平台模式的表格按照平台规格ID和商品规格编码填写导入", "duration": 12, "required": false, "when": "客户需要手工建单时" }
+  ]
+}
