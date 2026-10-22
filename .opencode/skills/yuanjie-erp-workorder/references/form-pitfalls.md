@@ -72,3 +72,20 @@
 
 本机 mihomo 在 `127.0.0.1:7897`，但环境变量 `HTTPS_PROXY` 指向不通的 `192.168.86.20:7898`。
 圆捷必须直连：Chrome 加 `--no-proxy-server`，Playwright 用 `proxy: { server: 'direct://' }`。
+
+## 12. 工单删不掉
+
+已从三个角度确认，**圆捷客服系统没有删除工单的能力**：
+
+- 前端包 `static/js/index.a92c1314.js` 里 workOrder 相关接口只有
+  `insert / update / queryDetail / endWithUpdate / hand / activeOrder / getEmployeeByUserCode`，
+  没有任何 delete / remove / cancel
+- 列表页无操作列（33 列最后是「处理组」），批量工具栏只有 新建工单 / 导出 / 转派
+- 详情页只有 修改 / 需求升级，「修改」面板里只有 重置 / 保存工单
+
+处理办法：
+
+- 重复单用「修改」把标题改成 `（重复单）xxx` 标记出来，统计上能辨认，但单数还在
+- 真要清掉只能找工单质检 / 主管 / 系统管理员
+- **所以更要把重复挡在前面**：`erp-batch.mjs` 开跑前会扫描系统里已有的
+  （联系方式+标题），命中就跳过
