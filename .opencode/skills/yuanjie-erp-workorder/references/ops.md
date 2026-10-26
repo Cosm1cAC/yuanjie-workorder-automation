@@ -58,7 +58,9 @@
 
 - 端口 `9344`，用户目录 `.chrome-profile3`
 - 启动参数要带四个反节流参数（见 form-pitfalls 坑 10）
-- 录单时窗口移到屏幕外（`left:-2400`），不抢焦点
+- 录单时窗口临时移到屏幕外（`left:-2400`），不抢焦点，**跑完自动归位到 (120,60) 1600x960**
+  - 加 `--show` 就不挪窗口，可以全程盯着看
+  - 万一被留在屏幕外，跑 `node restore-window.mjs` 立即找回
 - 自动化连它：`YTO_CDP_PORT=9344 YTO_PROFILE=.chrome-profile3`
 
 ## 常用环境变量

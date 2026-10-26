@@ -39,6 +39,8 @@ for (const [i, o] of orders.entries()) {
 }
 if (bad) console.log(`[warn] 共 ${bad} 单字段不全，继续跑但可能保存失败`)
 const DRY = process.argv.includes('--dry')
+// --show：不把窗口挪走，你可以全程盯着看
+const SHOW = process.argv.includes('--show')
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '--limit=0').split('=')[1]) || orders.length
 
 const W = { system: 6, tag: 7, category: 8, sysType: 9, channel: 10, duration: 11, contact: 12 }
@@ -80,18 +82,35 @@ console.log('[*] 已清理多余标签，当前只留 1 个')
  * 把窗口挪到屏幕外：不抢焦点，但保持正常渲染。
  * 不用最小化——最小化后 Chrome 会节流渲染，下拉面板的坐标会算错。
  */
+let PARKED_WINDOW = null
+
 async function parkWindow() {
   try {
     const s = await ctx.newCDPSession(page)
     const { windowId } = await s.send('Browser.getWindowForTarget')
+    PARKED_WINDOW = windowId
     await s.send('Browser.setWindowBounds', {
       windowId,
       bounds: { windowState: 'normal', left: -2400, top: 0, width: 1400, height: 950 },
     })
-    console.log('[*] 窗口已移到屏幕外（不抢焦点）')
+    console.log('[*] 窗口临时移到屏幕外（跑完自动归位）')
   } catch (e) {
     console.log('[*] 移窗失败（不影响运行）:', e.message.slice(0, 60))
   }
+}
+
+/** 跑完/出错/中断时把窗口挪回可见位置，否则用户找不到它 */
+async function restoreWindow() {
+  if (!PARKED_WINDOW) return
+  try {
+    const s = await ctx.newCDPSession(page)
+    await s.send('Browser.setWindowBounds', {
+      windowId: PARKED_WINDOW,
+      bounds: { windowState: 'normal', left: 120, top: 60, width: 1600, height: 960 },
+    })
+    console.log('[*] 窗口已归位')
+  } catch {}
+  PARKED_WINDOW = null
 }
 
 const fieldText = (i) =>
@@ -539,6 +558,7 @@ if (!DRY) {
   console.log(`平均 ${avg.toFixed(1)}s/单`)
 }
 
+await restoreWindow()
 await exportState(ctx).catch(() => {})
 await close(ctx)
 process.exit(0)
