@@ -198,7 +198,7 @@
         </div>
         <div>
           <label>实施人</label>
-          <input id="owner" list="ownerList" value="四川省区黄俊淏" autocomplete="off" />
+          <input id="owner" list="ownerList" placeholder="默认：四川省区黄俊淏（点开可选）" autocomplete="off" />
           <datalist id="ownerList">
             <option value="四川省区黄俊淏"></option>
             <option value="黑龙江省区周文强"></option>
@@ -210,6 +210,7 @@
             <option value="广东省区叶忠强"></option>
             <option value="浙南省区李忠伦"></option>
             <option value="河南省区李忠伦"></option>
+            <option value="湖北省区肖志波 15673820083"></option>
             <option value="天津区施雪梅"></option>
             <option value="总部龙章银"></option>
           </datalist>
@@ -438,7 +439,7 @@ async function buildMessage() {
       `片区：${$('#district').value.trim() || '(空)'}`,
       `客户名：${$('#customer').value.trim() || '(空)'}`,
       `标题客户名：${customerName()}`,
-      `实施人：${$('#owner').value.trim() || '(空)'}`,
+      `实施人：${$('#owner').value.trim() || '四川省区黄俊淏'}`,
     ].join('\n')
     const text = `【工单任务】\n图片：\n${list}\n\n${meta}\n\n说明：${note}`
     return { text, uploaded }

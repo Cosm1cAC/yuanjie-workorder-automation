@@ -447,8 +447,8 @@ async function scanExisting(titles) {
           current: 1, size: 100, tab: '', code: '', title: t, systemName: '', labels: [], type: '',
           questionType: '', systemType: '', feedbackChannel: '', userNums: [], responsibleNums: [],
           groupIds: [], status: '', addRecord: '',
-          lowerCreateTimeStamp: Date.parse('2026-10-22T00:00:00+08:00'),
-          upperCreateTimeStamp: Date.parse('2026-10-24T00:00:00+08:00'),
+          lowerCreateTimeStamp: Date.now() - 7 * 24 * 3600 * 1000,
+          upperCreateTimeStamp: Date.now() + 24 * 3600 * 1000,
         }),
       })
       const j = await r.json()

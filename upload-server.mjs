@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const IMAGE_DIR = path.join(__dirname, '图片')
 const PUBLIC_DIR = path.join(__dirname, 'public')
 const PORT = Number(process.env.PORT || 8787)
+const ERP_URL = process.env.YTO_ERP_URL || 'https://yto-agile.yto56.com.cn:7100/workOrder/add'
 
 // ---- OpenCode 本地服务（把「图片 + 指令」直接发进当前会话）----
 function readOcService() {
@@ -186,12 +187,29 @@ const server = http.createServer(async (req, res) => {
       const cdp = Number(process.env.YTO_CDP_PORT || 9344)
       const url = `http://127.0.0.1:${PORT}/`
       try {
-        const list = await (await fetch(`http://127.0.0.1:${cdp}/json/list`)).json()
-        const has = list.some((t) => t.type === 'page' && t.url.startsWith(url))
-        if (!has) {
-          await fetch(`http://127.0.0.1:${cdp}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })
+        const base = `http://127.0.0.1:${cdp}`
+        const list = await (await fetch(`${base}/json/list`)).json()
+        const hasUpload = list.some((t) => t.type === 'page' && t.url.startsWith(url))
+        if (!hasUpload) {
+          await fetch(`${base}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' })
         }
-        return json(res, 200, { ok: true, cdp, opened: !has })
+
+        // 顺手把 ERP 工单界面也开上（登录跳转页也算已打开）
+        const isErp = (t) =>
+          t.type === 'page' &&
+          (t.url.includes('yto-agile.yto56.com.cn') || t.url.startsWith('https://sso.yto56.com.cn/'))
+        let openedErp = false
+        if (!list.some(isErp)) {
+          await fetch(`${base}/json/new?${encodeURIComponent(ERP_URL)}`, { method: 'PUT' })
+          openedErp = true
+        }
+
+        // 焦点留在上传页
+        const after = await (await fetch(`${base}/json/list`)).json()
+        const upload = after.find((t) => t.type === 'page' && t.url.startsWith(url))
+        if (upload?.id) await fetch(`${base}/json/activate/${upload.id}`)
+
+        return json(res, 200, { ok: true, cdp, opened: !hasUpload, openedErp })
       } catch (e) {
         return json(res, 200, { ok: false, error: String(e.message) })
       }

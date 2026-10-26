@@ -23,7 +23,7 @@
 ## 上传台
 
 - 地址：`http://127.0.0.1:8787`
-- 双击 `启动图片上传.bat` 同时起服务(8787)和专用 Chrome(9344)，并打开上传页
+- 双击 `启动图片上传.bat` 同时起服务(8787)和专用 Chrome(9344)，并打开上传页 + ERP 工单界面(`/workOrder/add`)
 - **关掉浏览器 → 服务和看门狗一起退出**，不留残进程
 - 要彻底停用 `停止图片上传.bat`
 - 看门狗每 3 秒探测 `/api/ping`，服务挂了自动拉起
@@ -67,6 +67,7 @@
 |---|---|---|
 | `YTO_CDP_PORT` | 9344 | 专用 Chrome 调试端口 |
 | `YTO_PROFILE` | .chrome-profile3 | 专用 Chrome 用户目录 |
+| `YTO_ERP_URL` | https://yto-agile.yto56.com.cn:7100/workOrder/add | 启动时一并打开的 ERP 页面 |
 | `PORT` | 8787 | 上传服务端口 |
 
 ## 登录态

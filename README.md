@@ -17,7 +17,8 @@ node login.mjs
 
 # 2) 启动上传台（服务 + 专用浏览器）
 启动图片上传.bat
-#    → http://127.0.0.1:8787
+#    → 上传页 http://127.0.0.1:8787
+#    → ERP 工单界面 https://yto-agile.yto56.com.cn:7100/workOrder/add
 ```
 
 ## 录单
@@ -67,6 +68,7 @@ node erp-batch.mjs orders.json --limit=3
 |---|---|---|
 | `YTO_CDP_PORT` | 9344 | 专用 Chrome 调试端口 |
 | `YTO_PROFILE` | `.chrome-profile3` | 专用 Chrome 用户目录 |
+| `YTO_ERP_URL` | `https://yto-agile.yto56.com.cn:7100/workOrder/add` | 启动时一并打开的 ERP 页面 |
 | `PORT` | 8787 | 上传服务端口 |
 
 ## 注意

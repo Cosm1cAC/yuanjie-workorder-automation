@@ -364,7 +364,7 @@ node erp-batch.mjs orders.json --limit=2
 - 不要回复「获取不到图片」：图片在本地磁盘，路径就是消息里给的 `图片/xxx.png`
 - 服务代码：`upload-server.mjs` + `public/index.html`
 - **常驻方式**：双击 `启动图片上传.bat`，由 `upload-watchdog.mjs` 统一托管
-  - 同时拉起上传服务(8787) 和专用 Chrome(9344，并打开上传页)
+  - 同时拉起上传服务(8787) 和专用 Chrome(9344)，并打开上传页 + ERP 工单界面(`/workOrder/add`)
   - 服务挂了自动拉起；**浏览器一关，服务和看门狗一起退出**
   - 要全停用 `停止图片上传.bat`
   - 之前直接起服务会被 Ctrl+C 打断，页面就报 `fail to fetch`

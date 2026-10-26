@@ -13,6 +13,7 @@ const ROOT = __dirname
 const PORT = Number(process.env.PORT || 8787)
 const CDP_PORT = Number(process.env.YTO_CDP_PORT || 9344)
 const UPLOAD_URL = `http://127.0.0.1:${PORT}/`
+const ERP_URL = process.env.YTO_ERP_URL || 'https://yto-agile.yto56.com.cn:7100/workOrder/add'
 const PROFILE = path.join(ROOT, process.env.YTO_PROFILE || '.chrome-profile3')
 const CHROME = path.join(process.env.LOCALAPPDATA || '', 'Google/Chrome/Application/chrome.exe')
 const LOG = path.join(ROOT, 'watchdog.log')
@@ -94,15 +95,23 @@ function killServer() {
 
 let spawnedChrome = null
 
-async function ensureChrome() {
-  // 1) 端口上已经有浏览器就复用
+/** 浏览器进程号；已经关掉就返回 null（看门狗随之收尾，不再自动重开） */
+function browserPid() {
+  // 1) 端口上已经有浏览器就当作活着
   const existing = portPid(CDP_PORT)
   if (existing && alive(existing)) return existing
 
   // 2) 刚启动、端口还没绑定的 Chrome
   if (spawnedChrome && alive(spawnedChrome)) return spawnedChrome
 
-  // 3) 启动一个新的
+  return null
+}
+
+/** 只在启动时调用：起一个专用 Chrome 并等调试端口就绪 */
+async function launchChrome() {
+  const existing = browserPid()
+  if (existing) return existing
+
   fs.mkdirSync(PROFILE, { recursive: true })
   const p = spawn(
     CHROME,
@@ -133,6 +142,32 @@ async function ensureChrome() {
   return spawnedChrome
 }
 
+/** ERP 页面（含登录跳转）是否已经开着 */
+function isErpPage(t) {
+  return (
+    t?.type === 'page' &&
+    (t.url.includes('yto-agile.yto56.com.cn') || t.url.startsWith('https://sso.yto56.com.cn/'))
+  )
+}
+
+/** 启动时把 ERP 工单界面也开出来；开完把上传页切回前台 */
+async function ensureErpTabs() {
+  const base = `http://127.0.0.1:${CDP_PORT}`
+  try {
+    let list = await (await fetch(`${base}/json/list`, { signal: AbortSignal.timeout(3000) })).json()
+    if (!list.some(isErpPage)) {
+      await fetch(`${base}/json/new?${encodeURIComponent(ERP_URL)}`, {
+        method: 'PUT',
+        signal: AbortSignal.timeout(5000),
+      })
+      log('已打开 ERP 工单界面')
+      list = await (await fetch(`${base}/json/list`, { signal: AbortSignal.timeout(3000) })).json()
+    }
+    const upload = list.find((t) => t.type === 'page' && t.url.startsWith(UPLOAD_URL))
+    if (upload?.id) await fetch(`${base}/json/activate/${upload.id}`, { signal: AbortSignal.timeout(3000) })
+  } catch {}
+}
+
 /** 确保上传页开着 */
 async function ensureTab() {
   try {
@@ -149,12 +184,13 @@ async function ensureTab() {
 
 log(`上传服务 ${PORT} | Chrome 调试端口 ${CDP_PORT}`)
 
-await ensureChrome()
+await launchChrome()
+await ensureErpTabs()
 if (!(await httpOk(`http://127.0.0.1:${PORT}/api/ping`))) startServer()
 
 async function loop() {
-  const pid = await ensureChrome()
-  if (!pid || !alive(pid)) {
+  const pid = browserPid()
+  if (!pid) {
     log('检测到浏览器已关闭，服务一并退出')
     killServer()
     process.exit(0)
