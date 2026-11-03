@@ -30,7 +30,7 @@ for (const [i, o] of orders.entries()) {
   if (!o.category) miss.push('category')
   if (!o.systemType) miss.push('systemType')
   if (!o.channel) miss.push('channel')
-  if (!Array.isArray(o.tagPath) || o.tagPath.length !== 6) miss.push('tagPath(必须6级)')
+  if (!Array.isArray(o.tagPath) || o.tagPath.length < 4) miss.push('tagPath(至少4级)')
   if (!o.image) miss.push('image')
   if (miss.length) {
     console.log(`[warn] 第 ${i + 1} 单缺字段: ${miss.join(', ')} | ${o.subject || '(无标题)'}`)
