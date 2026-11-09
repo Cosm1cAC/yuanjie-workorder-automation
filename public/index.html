@@ -66,6 +66,23 @@
     background:rgba(43,43,51,.62);color:#fff;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}
   .stage:hover .rm{opacity:1;}
 
+  /* 工单模板选择 */
+  .tpl-wrap{margin:16px 18px 0;}
+  .tpl-wrap .tpl-title{font-size:12px;color:var(--text-2);margin-bottom:8px;}
+  .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .tpl{border:1.5px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer;background:#fff;
+    transition:all .15s;display:flex;gap:8px;align-items:flex-start;}
+  .tpl:hover{border-color:var(--purple-500);background:var(--purple-50);}
+  .tpl.active{border-color:var(--purple-600);background:var(--purple-100);box-shadow:0 0 0 3px rgba(142,36,170,.08);}
+  .tpl .ic{width:22px;height:22px;flex:none;border-radius:6px;background:var(--purple-100);color:var(--purple-700);
+    display:flex;align-items:center;justify-content:center;font-size:12px;}
+  .tpl.active .ic{background:var(--purple-600);color:#fff;}
+  .tpl .nm{font-size:12.5px;font-weight:600;line-height:1.35;}
+  .tpl .ct{font-size:11px;color:var(--text-3);margin-top:1px;}
+  .tpl-hint{margin-top:8px;font-size:11.5px;color:var(--text-3);line-height:1.6;
+    background:var(--purple-50);border:1px dashed #e2d3f0;border-radius:8px;padding:7px 10px;display:none;}
+  .tpl-hint.show{display:block;}
+
   .meta-form{margin:14px 18px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
   .meta-form .full{grid-column:1 / -1;}
   .meta-form label{display:block;font-size:12px;color:var(--text-2);margin-bottom:5px;}
@@ -156,6 +173,12 @@
     <section class="card compose">
       <div class="card-hd"><i class="mark"></i><h2>新建任务</h2></div>
 
+      <div class="tpl-wrap">
+        <div class="tpl-title">工单模板 <span class="req" style="color:#d32f2f">*</span></div>
+        <div class="tpl-grid" id="tplGrid"></div>
+        <div class="tpl-hint" id="tplHint"></div>
+      </div>
+
       <div class="drop" id="drop">
         <svg class="cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6.5 18.5A3.5 3.5 0 0 1 6 11.6a5.2 5.2 0 0 1 10.1-1.5A3.9 3.9 0 0 1 18 18.5" />
@@ -214,6 +237,14 @@
             <option value="天津区施雪梅"></option>
             <option value="总部龙章银"></option>
           </datalist>
+        </div>
+        <div>
+          <label>客户电话 <span class="req" id="phoneReq" style="display:none">*</span></label>
+          <input id="phone" placeholder="可留空" inputmode="numeric" autocomplete="off" />
+        </div>
+        <div>
+          <label>网点 / 位置</label>
+          <input id="site" placeholder="可留空，如 二号库省区车队办公室" autocomplete="off" />
         </div>
         <div class="full preview-line">标题客户名：<b id="namePreview">—</b></div>
       </div>
@@ -418,6 +449,7 @@ async function uploadOne(item) {
 /** 上传暂存图片，拼出给 AI 的完整文本 */
 async function buildMessage() {
   if (!staged.length) throw new Error('还没有图片')
+  if (!currentTpl) throw new Error('先选一个工单模板')
   const note = noteEl.value.trim()
   if (!note) throw new Error('还没写工单说明')
   const province = $('#province')
@@ -427,6 +459,20 @@ async function buildMessage() {
     throw new Error('省区不能为空')
   }
   province.classList.remove('invalid')
+
+  const phoneEl = $('#phone')
+  const phone = phoneEl.value.trim()
+  if (currentTpl.needPhone && !phone) {
+    phoneEl.classList.add('invalid')
+    phoneEl.focus()
+    throw new Error(`${currentTpl.name} 需要填客户电话`)
+  }
+  if (phone && !/^\d{6,15}$/.test(phone)) {
+    phoneEl.classList.add('invalid')
+    phoneEl.focus()
+    throw new Error('客户电话只填数字')
+  }
+  phoneEl.classList.remove('invalid')
 
   sendBtn.disabled = copyBtn.disabled = true
   sendBtn.textContent = '上传中…'
@@ -440,8 +486,11 @@ async function buildMessage() {
       `客户名：${$('#customer').value.trim() || '(空)'}`,
       `标题客户名：${customerName()}`,
       `实施人：${$('#owner').value.trim() || '四川省区黄俊淏'}`,
+      `客户电话：${phone || '(空)'}`,
+      `网点/位置：${$('#site').value.trim() || '(空)'}`,
     ].join('\n')
-    const text = `【工单任务】\n图片：\n${list}\n\n${meta}\n\n说明：${note}`
+    const tplLine = '模板：' + currentTpl.name + (currentTpl.count ? '（拆 ' + currentTpl.count + ' 单）' : '')
+    const text = `【工单任务】\n${tplLine}\n图片：\n${list}\n\n${meta}\n\n说明：${note}`
     return { text, uploaded }
   } finally {
     sendBtn.disabled = copyBtn.disabled = false
@@ -581,6 +630,72 @@ provinceSel.addEventListener('change', updatePreview)
 $('#district').addEventListener('input', updatePreview)
 $('#customer').addEventListener('input', updatePreview)
 updatePreview()
+
+
+// ---------- 工单模板 ----------
+const TEMPLATES = [
+  { id: 'erp-system', name: 'ERP 系统模式', count: 27, needPhone: true, ic: '系',
+    hint: '按功能点拆 27 单：订单审核/手工单/打印记录/各类策略/商品/基础管理/辅助功能/实施调研',
+    example: '按系统模式拆单' },
+  { id: 'erp-platform', name: 'ERP 平台模式', count: 8, needPhone: true, ic: '平',
+    hint: '固定 8 单：店铺授权/打印模版/打单设置/平台商品整理/订单打单筛选/快递匹配策略/订单补打/审单策略',
+    example: '按平台模式拆单' },
+  { id: 'erp-offline', name: 'ERP 线下打单', count: 10, needPhone: true, ic: '线',
+    hint: '固定 10 单：登录/绑定K码/面单余额/快递单模板/设置地址/添加店铺/打印助手/打单设置/打印快递单/充值转移',
+    example: '按线下打单模式拆单' },
+  { id: 'printer', name: '打印机 / 办公设备', count: 0, needPhone: false, ic: '打',
+    hint: '按「一台设备 / 一个动作」拆。说明是装驱动、打不出来、卡纸，还是硬件报修',
+    example: '打印机卡纸，现场检查是内部故障，已联系售后报修' },
+  { id: 'network', name: '网络故障', count: 0, needPhone: false, ic: '网',
+    hint: '说明现象（掉线/连不上/慢）、影响范围（整层/单台）、已做的处理',
+    example: '办公室无线网连不上，已把 DHCP 改为固定 IP，观察中' },
+  { id: 'security', name: '安防平台接入', count: 1, needPhone: false, ic: '安',
+    hint: '链路：安防平台/网点监控/网点监控配置/OSD需接入安防平台/监控接入安防平台（末两级同名，要点到第6列）',
+    example: '某某网点监控接入安防平台，16 个监控点全部在线' },
+  { id: 'custom', name: '其他 / 自定义', count: 0, needPhone: false, ic: '他',
+    hint: '不套模板，按说明处理',
+    example: '说明要录什么，我会先查同类工单再填' },
+]
+let currentTpl = null
+
+const tplGrid = $('#tplGrid')
+const tplHint = $('#tplHint')
+
+function renderTemplates() {
+  tplGrid.innerHTML = TEMPLATES.map((t) =>
+    `<div class="tpl${currentTpl && currentTpl.id === t.id ? ' active' : ''}" data-tpl="${t.id}">
+       <div class="ic">${t.ic}</div>
+       <div>
+         <div class="nm">${t.name}</div>
+         <div class="ct">${t.count ? t.count + ' 单' : '按需拆'}</div>
+       </div>
+     </div>`
+  ).join('')
+}
+
+function pickTemplate(id) {
+  currentTpl = TEMPLATES.find((t) => t.id === id) || null
+  renderTemplates()
+  if (!currentTpl) return
+  tplHint.textContent = currentTpl.hint
+  tplHint.classList.add('show')
+  $('#phoneReq').style.display = currentTpl.needPhone ? 'inline' : 'none'
+  noteEl.placeholder = currentTpl.example
+  if (currentTpl.needPhone) $('#phone').focus()
+}
+
+tplGrid.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-tpl]')
+  if (el) pickTemplate(el.dataset.tpl)
+})
+
+$('#phone').addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/[^0-9]/g, '')
+  e.target.classList.remove('invalid')
+})
+$('#site').addEventListener('input', () => {})
+
+renderTemplates()
 
 // 会话检测 + 切换
 async function loadSessions(current) {

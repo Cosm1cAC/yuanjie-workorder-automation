@@ -1,0 +1,21 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch({ channel:'chrome', headless:true, args:['--no-proxy-server'] })
+const page = await browser.newPage({ viewport:{width:1440,height:1300} })
+const errs=[]; page.on('pageerror', e=>errs.push(String(e.message).slice(0,160)))
+await page.goto('http://127.0.0.1:8787/?v=20', { waitUntil:'domcontentloaded' })
+await page.waitForTimeout(1500)
+console.log('模板数:', await page.locator('.tpl').count())
+console.log('错误:', errs.join(' | ') || 'none')
+// 选 ERP 系统模式
+await page.click('[data-tpl="erp-system"]')
+await page.waitForTimeout(300)
+console.log('选中:', await page.locator('.tpl.active .nm').innerText())
+console.log('提示:', (await page.locator('#tplHint').innerText()).slice(0,50))
+console.log('电话必填显示:', await page.locator('#phoneReq').isVisible())
+console.log('说明占位:', await page.getAttribute('#note','placeholder'))
+// 切到打印机
+await page.click('[data-tpl="printer"]')
+await page.waitForTimeout(300)
+console.log('切到:', await page.locator('.tpl.active .nm').innerText(), '| 电话必填:', await page.locator('#phoneReq').isVisible())
+await page.screenshot({ path:'ui-tpl.png', fullPage:true })
+await browser.close(); process.exit(0)
