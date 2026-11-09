@@ -1,0 +1,21 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch({ channel:'chrome', headless:true, args:['--no-proxy-server'] })
+const page = await browser.newPage({ viewport:{width:1440,height:1300} })
+const errs=[]; page.on('pageerror', e=>errs.push(String(e.message).slice(0,160)))
+await page.goto('http://127.0.0.1:8787/?v=30', { waitUntil:'domcontentloaded' })
+await page.waitForTimeout(1200)
+
+const visible = async (sel) => await page.locator(sel).isVisible()
+console.log('=== 选 ERP 系统模式 ===')
+await page.click('[data-tpl="erp-system"]'); await page.waitForTimeout(300)
+console.log('省区可见:', await visible('#province'), '| 客户电话可见:', await visible('#phone'), '| 网点可见:', await visible('#site'))
+console.log('网点必填星:', await page.locator('#siteReq').isVisible())
+
+console.log('\n=== 切到 安防平台接入 ===')
+await page.click('[data-tpl="security"]'); await page.waitForTimeout(300)
+console.log('省区可见:', await visible('#province'), '| 片区可见:', await visible('#district'), '| 客户名可见:', await visible('#customer'), '| 客户电话可见:', await visible('#phone'))
+console.log('实施人可见:', await visible('#owner'), '| 网点可见:', await visible('#site'), '| 网点必填星:', await page.locator('#siteReq').isVisible())
+console.log('标题客户名预览可见:', await page.locator('.preview-line').isVisible())
+await page.screenshot({ path:'ui-non-erp.png', fullPage:true })
+console.log('\n错误:', errs.join(' | ') || 'none')
+await browser.close(); process.exit(0)

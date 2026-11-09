@@ -85,6 +85,7 @@
 
   .meta-form{margin:14px 18px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
   .meta-form .full{grid-column:1 / -1;}
+  .erp-only.hide{display:none !important;}
   .meta-form label{display:block;font-size:12px;color:var(--text-2);margin-bottom:5px;}
   .meta-form .req{color:#d32f2f;}
   .meta-form select,.meta-form input{width:100%;height:34px;padding:0 10px;border:1px solid var(--line);
@@ -198,13 +199,13 @@
       <div class="staged" id="staged"></div>
 
       <div class="meta-form">
-        <div>
+        <div class="erp-only">
           <label>省区 <span class="req">*</span></label>
           <select id="province">
             <option value="">请选择省区</option>
           </select>
         </div>
-        <div>
+        <div class="erp-only">
           <label>片区</label>
           <input id="district" list="districtList" placeholder="可留空" autocomplete="off" />
           <datalist id="districtList">
@@ -215,7 +216,7 @@
             <option value="川北片区"></option>
           </datalist>
         </div>
-        <div>
+        <div class="erp-only">
           <label>客户名</label>
           <input id="customer" placeholder="可留空" autocomplete="off" />
         </div>
@@ -238,15 +239,15 @@
             <option value="总部龙章银"></option>
           </datalist>
         </div>
-        <div>
+        <div class="erp-only">
           <label>客户电话 <span class="req" id="phoneReq" style="display:none">*</span></label>
           <input id="phone" placeholder="可留空" inputmode="numeric" autocomplete="off" />
         </div>
         <div>
-          <label>网点 / 位置</label>
+          <label>网点 / 位置 <span class="req" id="siteReq" style="display:none">*</span></label>
           <input id="site" placeholder="可留空，如 二号库省区车队办公室" autocomplete="off" />
         </div>
-        <div class="full preview-line">标题客户名：<b id="namePreview">—</b></div>
+        <div class="full preview-line erp-only">标题客户名：<b id="namePreview">—</b></div>
       </div>
 
       <div class="field">
@@ -452,43 +453,57 @@ async function buildMessage() {
   if (!currentTpl) throw new Error('先选一个工单模板')
   const note = noteEl.value.trim()
   if (!note) throw new Error('还没写工单说明')
+  const isErp = !!currentTpl.erp
   const province = $('#province')
-  if (!province.value.trim()) {
-    province.classList.add('invalid')
-    province.focus()
-    throw new Error('省区不能为空')
-  }
-  province.classList.remove('invalid')
-
   const phoneEl = $('#phone')
+  const siteEl = $('#site')
   const phone = phoneEl.value.trim()
-  if (currentTpl.needPhone && !phone) {
-    phoneEl.classList.add('invalid')
-    phoneEl.focus()
-    throw new Error(`${currentTpl.name} 需要填客户电话`)
-  }
-  if (phone && !/^\d{6,15}$/.test(phone)) {
-    phoneEl.classList.add('invalid')
-    phoneEl.focus()
-    throw new Error('客户电话只填数字')
-  }
-  phoneEl.classList.remove('invalid')
+  const site = siteEl.value.trim()
 
+  if (isErp) {
+    if (!province.value.trim()) {
+      province.classList.add('invalid')
+      province.focus()
+      throw new Error('省区不能为空')
+    }
+    province.classList.remove('invalid')
+    if (currentTpl.needPhone && !phone) {
+      phoneEl.classList.add('invalid')
+      phoneEl.focus()
+      throw new Error(currentTpl.name + ' 需要填客户电话')
+    }
+    if (phone && !/^\d{6,15}$/.test(phone)) {
+      phoneEl.classList.add('invalid')
+      phoneEl.focus()
+      throw new Error('客户电话只填数字')
+    }
+    phoneEl.classList.remove('invalid')
+  } else {
+    if (!site) {
+      siteEl.classList.add('invalid')
+      siteEl.focus()
+      throw new Error('非 ERP 任务请填网点 / 位置')
+    }
+    siteEl.classList.remove('invalid')
+  }
   sendBtn.disabled = copyBtn.disabled = true
   sendBtn.textContent = '上传中…'
   try {
     const uploaded = []
     for (const s of staged) uploaded.push(await uploadOne(s))
     const list = uploaded.map(u => `- ${u.rel}`).join('\n')
-    const meta = [
-      `省区：${$('#province').value.trim()}`,
-      `片区：${$('#district').value.trim() || '(空)'}`,
-      `客户名：${$('#customer').value.trim() || '(空)'}`,
-      `标题客户名：${customerName()}`,
-      `实施人：${$('#owner').value.trim() || '四川省区黄俊淏'}`,
-      `客户电话：${phone || '(空)'}`,
-      `网点/位置：${$('#site').value.trim() || '(空)'}`,
-    ].join('\n')
+    const owner = ($('#owner').value.trim()) || '四川省区黄俊淏'
+    const meta = isErp
+      ? [
+          `省区：${$('#province').value.trim()}`,
+          `片区：${$('#district').value.trim() || '(空)'}`,
+          `客户名：${$('#customer').value.trim() || '(空)'}`,
+          `标题客户名：${customerName()}`,
+          `实施人：${owner}`,
+          `客户电话：${phone}`,
+          `网点/位置：${site || '(空)'}`,
+        ].join('\n')
+      : [`实施人：${owner}`, `网点/位置：${site}`].join('\n')
     const tplLine = '模板：' + currentTpl.name + (currentTpl.count ? '（拆 ' + currentTpl.count + ' 单）' : '')
     const text = `【工单任务】\n${tplLine}\n图片：\n${list}\n\n${meta}\n\n说明：${note}`
     return { text, uploaded }
@@ -634,13 +649,13 @@ updatePreview()
 
 // ---------- 工单模板 ----------
 const TEMPLATES = [
-  { id: 'erp-system', name: 'ERP 系统模式', count: 27, needPhone: true, ic: '系',
+  { id: 'erp-system', name: 'ERP 系统模式', count: 27, needPhone: true, erp: true, ic: '系',
     hint: '按功能点拆 27 单：订单审核/手工单/打印记录/各类策略/商品/基础管理/辅助功能/实施调研',
     example: '按系统模式拆单' },
-  { id: 'erp-platform', name: 'ERP 平台模式', count: 8, needPhone: true, ic: '平',
+  { id: 'erp-platform', name: 'ERP 平台模式', count: 8, needPhone: true, erp: true, ic: '平',
     hint: '固定 8 单：店铺授权/打印模版/打单设置/平台商品整理/订单打单筛选/快递匹配策略/订单补打/审单策略',
     example: '按平台模式拆单' },
-  { id: 'erp-offline', name: 'ERP 线下打单', count: 10, needPhone: true, ic: '线',
+  { id: 'erp-offline', name: 'ERP 线下打单', count: 10, needPhone: true, erp: true, ic: '线',
     hint: '固定 10 单：登录/绑定K码/面单余额/快递单模板/设置地址/添加店铺/打印助手/打单设置/打印快递单/充值转移',
     example: '按线下打单模式拆单' },
   { id: 'printer', name: '打印机 / 办公设备', count: 0, needPhone: false, ic: '打',
@@ -679,9 +694,16 @@ function pickTemplate(id) {
   if (!currentTpl) return
   tplHint.textContent = currentTpl.hint
   tplHint.classList.add('show')
-  $('#phoneReq').style.display = currentTpl.needPhone ? 'inline' : 'none'
   noteEl.placeholder = currentTpl.example
+
+  const isErp = !!currentTpl.erp
+  // 非 ERP 任务把 ERP 专用字段整块收起来，只留「实施人 + 网点/位置」
+  document.querySelectorAll('.erp-only').forEach((el) => el.classList.toggle('hide', !isErp))
+  $('#phoneReq').style.display = currentTpl.needPhone ? 'inline' : 'none'
+  $('#siteReq').style.display = isErp ? 'none' : 'inline'
+
   if (currentTpl.needPhone) $('#phone').focus()
+  else $('#site').focus()
 }
 
 tplGrid.addEventListener('click', (e) => {
